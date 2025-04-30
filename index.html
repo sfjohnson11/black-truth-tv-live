@@ -1,0 +1,129 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Black Truth TV Network</title>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const supabase = createClient(
+      'https://buyunoxamgixwsglwckq.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1eXVub3hhbWdpeHdzZ2x3Y2txIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU2MDkzNjcsImV4cCI6MjA2MTE4NTM2N30.88BQ0NYFR2pAB-6azfolkBjMzDRILGE85H3SH1mLYew'
+    );
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const player = document.getElementById("bttvPlayer");
+      const nowPlaying = document.getElementById("nowPlaying");
+      const comingUp = document.getElementById("comingUp");
+      const scheduleList = document.getElementById("scheduleList");
+      const grid = document.getElementById("channelGrid");
+
+      async function loadChannel(channelId) {
+        const bucketPrefix = `https://buyunoxamgixwsglwckq.supabase.co/storage/v1/object/public/channel${channelId}/`;
+        const { data, error } = await supabase
+          .from('programs')
+          .select('*')
+          .eq('channel_id', channelId)
+          .order('start_time');
+
+        const now = new Date();
+        const current = data?.find(p => new Date(p.start_time) <= now && new Date(p.start_time).getTime() + 3600000 > now);
+        const upcoming = data?.filter(p => new Date(p.start_time) > now);
+
+        if (error || !data) {
+          nowPlaying.textContent = 'Error loading channel programs.';
+          player.src = bucketPrefix + 'standby.mp4';
+          return;
+        }
+
+        if (current) {
+          player.src = current.mp4_url.startsWith('http') ? current.mp4_url : bucketPrefix + current.mp4_url;
+          nowPlaying.textContent = `Now Playing: ${current.title}`;
+        } else {
+          player.src = bucketPrefix + 'standby.mp4';
+          nowPlaying.textContent = 'No program currently playing.';
+        }
+
+        comingUp.textContent = upcoming.length > 0 ? `Coming Up Next: ${upcoming[0].title}` : `Coming Up Next: --`;
+
+        scheduleList.innerHTML = '';
+        upcoming.slice(0, 5).forEach(show => {
+          const li = document.createElement('li');
+          li.textContent = `${new Date(show.start_time).toLocaleString()} – ${show.title}`;
+          scheduleList.appendChild(li);
+        });
+      }
+
+      async function loadChannels() {
+        const { data: channels, error } = await supabase.from('channels').select('*').order('id');
+        if (error || !channels) return;
+
+        channels.forEach(channel => {
+          const card = document.createElement("div");
+          card.className = "channel-card";
+          card.innerHTML = `
+            <img class="channel-thumbnail" src="${channel.thumbnail || 'https://blacktruthnetwork.vercel.app/images/placeholder.jpg'}" alt="${channel.name}">
+            <div class="overlay">▶</div>
+            <div class="channel-info"><h3>${channel.name}</h3></div>
+          `;
+          card.onclick = () => loadChannel(channel.id);
+          grid.appendChild(card);
+        });
+      }
+
+      async function loadTicker() {
+        const { data, error } = await supabase
+          .from('ticker')
+          .select('*')
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(1);
+        const tickerDiv = document.getElementById("breakingTicker");
+        tickerDiv.textContent = error || !data || data.length === 0
+          ? "Welcome to Black Truth TV — Stay tuned."
+          : data[0].message;
+      }
+
+      loadChannels();
+      loadTicker();
+    });
+  </script>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #000; color: #fff; }
+    header { background: #111; padding: 20px; text-align: center; color: gold; font-size: 1.5em; }
+    nav a { margin: 0 15px; color: gold; text-decoration: none; font-weight: bold; }
+    .player-container { position: relative; padding-top: 56.25%; background: #111; }
+    .player-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    .now-playing { background: #222; color: #0f0; text-align: center; padding: 10px; font-weight: bold; }
+    .coming-up { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 8px; color: #fff; font-size: 0.9em; }
+    .schedule-box { padding: 20px; background: #111; color: #ccc; }
+    .channel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; padding: 20px; }
+    .channel-card { position: relative; background: #1a1a1a; border-radius: 12px; overflow: hidden; transition: transform 0.3s; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .channel-card:hover { transform: scale(1.05); }
+    .channel-thumbnail { width: 100%; height: 140px; object-fit: cover; }
+    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); color: gold; display: flex; justify-content: center; align-items: center; font-size: 2em; opacity: 0; transition: opacity 0.3s; }
+    .channel-card:hover .overlay { opacity: 1; }
+    .channel-info { padding: 15px; text-align: center; }
+    .channel-info h3 { margin: 0; color: gold; }
+    .breaking-news { background: crimson; color: white; padding: 10px; overflow: hidden; white-space: nowrap; position: fixed; bottom: 0; width: 100%; font-weight: bold; z-index: 1000; animation: ticker-scroll 30s linear infinite; }
+    @keyframes ticker-scroll { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="blacktruth1.jpeg" alt="Black Truth TV Logo" style="max-height: 80px; vertical-align: middle;">
+    <span style="margin-left: 10px; vertical-align: middle;">Black Truth TV Network</span>
+  </header>
+  <div class="now-playing" id="nowPlaying">Now Playing: Select a Channel</div>
+  <div class="player-container">
+    <video id="bttvPlayer" controls poster="https://blacktruthnetwork.vercel.app/images/placeholder.jpg"></video>
+    <div class="coming-up" id="comingUp">Coming Up Next: --</div>
+  </div>
+  <div class="schedule-box">
+    <h3>Upcoming Schedule</h3>
+    <ul id="scheduleList"></ul>
+  </div>
+  <div class="channel-grid" id="channelGrid"></div>
+  <div class="breaking-news" id="breakingTicker">Loading latest news...</div>
+</body>
+</html>
