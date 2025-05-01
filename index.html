@@ -11,9 +11,9 @@
       background: #000;
       color: #fff;
       display: flex;
+      flex-direction: column;
       height: 100vh;
       overflow: hidden;
-      flex-direction: column;
     }
     .sidebar {
       width: 280px;
@@ -144,9 +144,10 @@
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
     const supabase = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     );
 
     const sidebar = document.getElementById("channelSidebar");
@@ -169,7 +170,7 @@
       channels.forEach(ch => {
         const div = document.createElement("div");
         div.className = "channel";
-        div.innerHTML = \`<h4>\${ch.name}</h4><p>\${ch.description || ""}</p>\`;
+        div.innerHTML = `<h4>${ch.name}</h4><p>${ch.description || ""}</p>`;
         div.onclick = () => {
           if (channelPasswords[ch.id]) {
             const input = prompt("Enter password for this channel:");
@@ -199,9 +200,9 @@
       nowPlaying.textContent = current ? "Now Playing: " + current.title : "Now Playing: --";
 
       if (current?.mp4_url) {
-        player.src = \`\${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/\${bucket}/\${current.mp4_url}\`;
+        player.src = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${current.mp4_url}`;
       } else {
-        player.src = \`\${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/\${bucket}/standby.mp4\`;
+        player.src = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/standby.mp4`;
       }
 
       if (next?.title) {
